@@ -1,13 +1,34 @@
 import ctypes
 import google_calendar_helper
 import json
+from os import path
+import platform
 
 
 SHAHAF_HOURS = 14
+LIBRARY_DIRECTORY_NAME = "ShahafToJSONLibraries"
+WIN_LIBRARY_NAME = "win.dll"
+ARM_LIBRARY_NAME = "arm.so"
+X86_LIBRARY_NAME = "x86.so"
+
+WINDOWS_SYSTEM = "Windows"
+X86_ARCH = "x86"
+ARM_ARCH = "arm"
 
 
 def call_helper(*args) -> str:
-    library = ctypes.cdll.LoadLibrary("./Shahaf.so")
+    if platform.system() == WINDOWS_SYSTEM:
+        library_name = WIN_LIBRARY_NAME
+    else:
+        arch = platform.architecture()
+        if X86_ARCH in platform.machine().lower():
+            library_name = X86_LIBRARY_NAME
+        elif ARM_ARCH in platform.machine().lower():
+            library_name = ARM_LIBRARY_NAME
+        else:
+            raise Exception(f"Unknown arch {arch}.")
+
+    library = ctypes.cdll.LoadLibrary(path.join(LIBRARY_DIRECTORY_NAME, library_name))
     shahaf_main = library.mainC
     shahaf_main.restype = ctypes.c_void_p
     shahaf_main.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
@@ -36,6 +57,8 @@ def insert_timetable_to_calendar(url: str, class_code: int) -> None:
         day_num += 1
         cur_day = date_dict["day"]
         cur_month = date_dict["month"]
+        if lesson_dict.get(str(day_num)) == None:
+            continue
         for lesson_num, lesson_list in lesson_dict[str(day_num)].items():
             if len(lesson_list) == 0:
                 continue
@@ -59,7 +82,6 @@ def insert_timetable_to_calendar(url: str, class_code: int) -> None:
                 datetime_minute_end,
                 cur_day,
                 cur_month,
-                False,
             )
     # dates[day] = {day, month}
     # lessons[day][hournum] = {lessonName, teacher, location}

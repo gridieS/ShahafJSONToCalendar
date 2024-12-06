@@ -1,6 +1,7 @@
 from googleapiclient.discovery import build, Resource
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+
 import pytz
 import datetime
 import os.path
@@ -96,7 +97,12 @@ def get_day_lessons(
 # Returns lesson dictionary if true
 def lesson_exists_at(start_datetime: datetime.datetime) -> dict | bool:
     for event in get_day_lessons(start_datetime.day, start_datetime.month):
-        if event["start"]["dateTime"] == start_datetime.isoformat():
+        event_isoformat = (
+            event["start"]["dateTime"].split("+")[0]
+            if len(event["start"]["dateTime"].split("+")) != 0
+            else event["start"]["dateTime"]
+        )
+        if event_isoformat == start_datetime.isoformat():
             return event
 
     return False
@@ -128,11 +134,10 @@ def insert_lesson(
     if lesson_dict := lesson_exists_at(start_datetime):
         if lesson_dict["summary"] == lesson_name:  # Same lesson
             return
-
-        if lesson_update:
+        if lesson_update == True:
             remove_event(lesson_dict["id"])
         else:
-            if not is_lesson_updated(lesson_dict["summary"]):
+            if not (is_lesson_updated(lesson_dict["summary"]) == True):
                 remove_event(lesson_dict["id"])
             else:
                 return
